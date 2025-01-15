@@ -1,0 +1,12 @@
+{
+  "name": "tpov_extract_visu",
+  "version": "1.0.0",
+  "description": "A tool to visualize json files created by tpov_extract on a map",
+  "license": "ISC",
+  "author": "CyrilSLi",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
