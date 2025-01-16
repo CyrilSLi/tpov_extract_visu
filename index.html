@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>tpov_extract Stop Data Visualization</title>
+    <meta charset="utf-8">
+    <style>
+        html, body, div {
+            margin: 0px;
+        }
+        #site {
+            height: 100vh;
+            height: 100dvh;
+            display: flex;
+            flex-direction: column;
+        }
+    </style>
+</head>
+<body>
+    <p id="test"></p>
+</body>
+<script>
+    var stopData = '%stopData%'; // single quotes to avoid escaping
+    if (stopData === "%stop" + "Data%") {
+        alert("Do not open this page directly. Please use the Node.js CLI tool.")
+        throw new Error("Do not open this page directly. Please use the Node.js CLI tool.");
+    } else {
+        stopData = JSON.parse(atob(stopData));
+    }
+    document.getElementById("test").innerHTML = JSON.stringify(stopData, null, 4);
+</script>
+</html>
