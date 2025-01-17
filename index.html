@@ -5,10 +5,13 @@
     <meta charset="utf-8">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1/dist/leaflet.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ace-builds@1/css/ace.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-easybutton@2/src/easy-button.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1/font/bootstrap-icons.min.css">
     <script src="https://cdn.jsdelivr.net/npm/leaflet@1/dist/leaflet.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/leaflet-polylinedecorator@1/dist/leaflet.polylineDecorator.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/ace-builds@1.37.5/src/ace.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/split.js@1/dist/split.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet-easybutton@2/src/easy-button.js"></script>
     <style>
         html, body, div {
             margin: 0px;
@@ -56,7 +59,7 @@
     </div>
     <script>
         window.Split(["#map", "#editor"], {
-            sizes: [75, 25],
+            sizes: [60, 40],
             minSize: [0, 0],
             snapOffset: 100,
             gutterSize: 10,
@@ -101,9 +104,10 @@
             smoothFactor: 0,
             bubblingMouseEvents: false,
         });
-        stopLine.on("click", function (e) {
+        function showStops(e) {
             editor.setValue(JSON.stringify(stopData.__stops__, null, 4), -1);
-        });
+        }
+        stopLine.on("click", showStops);
 
         const shapeLine = L.polyline((stopData.__shape__ || []).map(shape => [parseFloat(shape[1]), parseFloat(shape[0])]), { // shape is [lon, lat]
             color: "red",
@@ -112,9 +116,10 @@
             smoothFactor: 0,
             bubblingMouseEvents: false,
         });
-        shapeLine.on("click", function (e) {
+        function showShape(e) {
             editor.setValue(JSON.stringify(stopData.__shape__, null, 4), -1);
-        });
+        }
+        shapeLine.on("click", showShape);
 
         const osmLayer = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
             attribution: "&copy; <a href = 'https://www.openstreetmap.org/copyright'>OpenStreetMap</a> contributors",
@@ -145,11 +150,18 @@
         const map = L.map("map", {
             layers: [osmLayer, stopData.__shape__ ? shapeLine : stopLine],
         })
-        map.on("click", function (e) {
-            showGlobal();
-        });
         layerControl.addTo(map);
         setTimeout(() => map.fitBounds(stopLine.getBounds()), 0);
+
+        L.easyButton('<i class="bi bi-globe"></i>', function (btn, map) {
+            showGlobal();
+        }, "Show global data").addTo(map);
+        L.easyButton('<i class="bi bi bi-geo-alt-fill"></i>', function (btn, map) {
+            showStops();
+        }, "Show stop list").addTo(map);
+        L.easyButton('<i class="bi bi-bezier2"></i>', function (btn, map) {
+            showShape();
+        }, "Show shape list").addTo(map);
 
         stopData.__stops__.map(stop => {
             L.marker([parseFloat(stop.stop_lat), parseFloat(stop.stop_lon)])

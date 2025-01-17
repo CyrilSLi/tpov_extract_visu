@@ -23,13 +23,13 @@ const rl = readline.createInterface({
 });
 
 var tiandituTk;
-https.get("https://www.tianditu.gov.cn/", (res) => {
+/* https.get("https://www.tianditu.gov.cn/", (res) => {
     res.setEncoding("utf8");
     res.on("data", (data) => {
         tiandituTk = /(maptoken.+?")([0-9a-f]+)/.exec(data)[2];
         console.log("Tianditu token ready.");
     }
-)});
+)}); */
 
 class textReplace extends Transform {
     constructor() {
