@@ -9,18 +9,20 @@ const Ajv2020 = require("ajv/dist/2020");
 const ajv = new Ajv2020({ strict: false });
 const fs = require("node:fs");
 const http = require("node:http");
-const https = require("node:https");
-const open = require("open");
-const readline = require("node:readline");
+const path = require("node:path");
 const stopDataSchema = require("./stop_data_schema.json");
 const { Transform } = require("node:stream");
 const url = require("node:url");
 const validate = ajv.compile(stopDataSchema);
 
-const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-});
+var filePath = process.argv[2];
+if (!fs.existsSync(filePath)) {
+    filePath = path.join(__dirname, filePath);
+    if (!fs.existsSync(filePath)) {
+        console.log("File '" + filePath + "' not found, exiting.");
+        process.exit(1);
+    }
+}
 
 var tiandituTk;
 /* https.get("https://www.tianditu.gov.cn/", (res) => {
@@ -37,15 +39,7 @@ class textReplace extends Transform {
     }
     _transform(chunk, encoding, callback) {
         var ts = this;
-        fs.readFile(process.argv[2], "utf8", function (err, data) {
-            if (err) {
-                if (err.code === "ENOENT") {
-                    console.log("File '" + process.argv[2] + "' not found, exiting.");
-                    process.exit(1);
-                } else {
-                    throw err;
-                }
-            }
+        fs.readFile(filePath, "utf8", function (err, data) {
             verifyStopData(data);
             ts.push(chunk.toString().replaceAll(
                 "%stopData%",
@@ -67,12 +61,12 @@ function verifyStopData(data) {
     }
 }
 
-function servePage(_) {
+function servePage() {
     http.createServer(function (req, res) {
         var reqUrl = url.parse(req.url, true);
         if (reqUrl.pathname === "/") {
             res.writeHead(200, {"Content-Type": "text/html"});
-            fs.createReadStream("index.html").pipe(new textReplace).pipe(res);
+            fs.createReadStream(path.join(__dirname, "index.html")).pipe(new textReplace).pipe(res);
         }
     }).listen(5033, function () {
         console.log("Serving on http://localhost:" + this.address().port);
@@ -80,5 +74,5 @@ function servePage(_) {
     });
 }
 
-fs.createReadStream("index.html").pipe(new textReplace); // Do tests before serving
+fs.createReadStream(path.join(__dirname, "index.html")).pipe(new textReplace); // Do tests before serving
 servePage();

@@ -1,6 +1,6 @@
 {
     "name": "tpov_extract_visu",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "A tool to visualize json files created by tpov_extract on a map",
     "homepage": "https://github.com/CyrilSLi/tpov_extract_visu#readme",
     "bugs": {
@@ -18,10 +18,9 @@
         "test": "echo \"Error: no test specified\" && exit 1"
     },
     "bin": {
-        "tpovev": "./index.js"
+        "tpovev": "index.js"
     },
     "dependencies": {
-        "ajv": "^8.17.1",
-        "open": "^8.4.2"
+        "ajv": "^8.17.1"
     }
 }
