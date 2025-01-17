@@ -1,0 +1,99 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "stop_data",
+    "type": "object",
+    "properties": {
+        "__sourcetype__": {
+            "type": "string"
+        },
+        "route_id": {
+            "oneOf": [
+                {
+                    "type": "string"
+                },
+                {
+                    "type": "number"
+                }
+            ]
+        },
+        "route_long_name": {
+            "type": "string"
+        },
+        "agency_name": {
+            "type": "string"
+        },
+        "__stops__": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "stop_id": {
+                        "oneOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "number"
+                            }
+                        ]
+                    },
+                    "stop_name": {
+                        "type": "string"
+                    },
+                    "stop_lat": {
+                        "oneOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "number"
+                            }
+                        ]
+                    },
+                    "stop_lon": {
+                        "oneOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "number"
+                            }
+                        ]
+                    },
+                    "__transfer__": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "additionalProperties": true,
+                "required": [
+                    "stop_id",
+                    "stop_name",
+                    "stop_lat",
+                    "stop_lon"
+                ]
+            }
+        },
+        "__shape__": {
+            "type": "array",
+            "items": {
+                "type": "array",
+                "items": {
+                    "type": "number"
+                },
+                "minItems": 2,
+                "maxItems": 2
+            }
+        }
+    },
+    "additionalProperties": true,
+    "required": [
+        "__sourcetype__",
+        "route_id",
+        "route_long_name",
+        "agency_name",
+        "__stops__"
+    ]
+}

@@ -3,29 +3,181 @@
 <head>
     <title>tpov_extract Stop Data Visualization</title>
     <meta charset="utf-8">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1/dist/leaflet.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ace-builds@1/css/ace.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1/dist/leaflet.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet-polylinedecorator@1/dist/leaflet.polylineDecorator.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ace-builds@1.37.5/src/ace.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/split.js@1/dist/split.min.js"></script>
     <style>
         html, body, div {
             margin: 0px;
         }
-        #site {
+        html, body {
+            margin: 0px;
             height: 100vh;
             height: 100dvh;
             display: flex;
             flex-direction: column;
         }
+        h1 {
+            font-family: Arial, sans-serif;
+            color: #000000;
+            font-size: 28px;
+            font-weight: bold;
+            margin: 10px;
+        }
+        #map {
+            height: 100%;
+            width: 100%;
+            position: relative;
+        }
+        #editor {
+            height: 100%;
+            width: 100%;
+            position: relative;
+            font-size: 16px;
+        }
+        #app {
+            flex: 1;
+            display: flex;
+        }
+        .gutter {
+            cursor: ew-resize;
+        }
     </style>
 </head>
 <body>
-    <p id="test"></p>
+    <noscript><p>JavaScript is required to use this website.</p></noscript>
+    <h1 id="title">tpov_extract Stop Data Visualization</h1>
+    <div id="app">
+        <div id="map"></div>
+        <div id="editor"></div>
+    </div>
+    <script>
+        window.Split(["#map", "#editor"], {
+            sizes: [75, 25],
+            minSize: [0, 0],
+            snapOffset: 100,
+            gutterSize: 10,
+            gutterAlign: "center",
+            direction: "horizontal",
+        });
+
+        var stopData = '%stopData%'; // single quotes to avoid escaping
+        if (stopData === "%stop" + "Data%") {
+            alert("Do not open this page directly. Please use the CLI tool.")
+            throw new Error("Do not open this page directly. Please use the CLI tool.");
+        } else {
+            stopData = JSON.parse(new TextDecoder().decode(new Uint8Array(stopData.split(","))));
+        }
+    
+        document.title = `${stopData.agency_name} ${stopData.route_long_name} | tpov_extract Visualization`;
+        document.getElementById("title").textContent = `${stopData.agency_name} ${stopData.route_long_name} | tpov_extract Visualization`;
+
+        const textData = JSON.stringify(stopData, null, 4).split("\n"); // for line numbers
+        const editor = ace.edit("editor");
+        editor.session.setMode("ace/mode/json");
+        editor.setReadOnly(true);
+        function foldObject (startLine) {
+            const startIndent = textData[startLine].search(/\S/);
+            const endLine = startLine + 1 + textData.slice(startLine + 1).map(i => i.search(/\S/) === startIndent).indexOf(true);
+            setTimeout(() => editor.session.foldAll(startLine, endLine, 0), 0);
+        }
+        function foldStartsWith (text) {
+            foldObject(textData.map(i => i.trim().startsWith(text)).indexOf(true));
+        }
+        function showGlobal() {
+            editor.setValue(textData.join("\n"), -1);
+            foldStartsWith('"__stops__": [');
+            foldStartsWith('"__shape__": [');
+        }
+        showGlobal();
+
+        const stopLine = L.polyline(stopData.__stops__.map(stop => [parseFloat(stop.stop_lat), parseFloat(stop.stop_lon)]), {
+            color: "blue",
+            weight: 7,
+            opacity: 0.8,
+            smoothFactor: 0,
+            bubblingMouseEvents: false,
+        });
+        stopLine.on("click", function (e) {
+            editor.setValue(JSON.stringify(stopData.__stops__, null, 4), -1);
+        });
+
+        const shapeLine = L.polyline((stopData.__shape__ || []).map(shape => [parseFloat(shape[1]), parseFloat(shape[0])]), { // shape is [lon, lat]
+            color: "red",
+            weight: 7,
+            opacity: 0.8,
+            smoothFactor: 0,
+            bubblingMouseEvents: false,
+        });
+        shapeLine.on("click", function (e) {
+            editor.setValue(JSON.stringify(stopData.__shape__, null, 4), -1);
+        });
+
+        const osmLayer = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            attribution: "&copy; <a href = 'https://www.openstreetmap.org/copyright'>OpenStreetMap</a> contributors",
+            maxZoom: 19,
+        });
+        // tianditu seems to only work with local html files (CORS issue)
+        const tdtLayer = L.layerGroup([
+            L.tileLayer("https://t{s}.tianditu.gov.cn/vec_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=vec&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=%tiandituTk%", {
+                subdomains: "01234567",
+                maxZoom: 18
+            }),
+            L.tileLayer ("https://t{s}.tianditu.gov.cn/cva_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=cva&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=%tiandituTk%", {
+                attribution: "转自天地图 <a href = 'https://www.tianditu.gov.cn'>https://www.tianditu.gov.cn</a>",
+                subdomains: "01234567",
+                maxZoom: 18
+            })
+        ])
+
+        const layerControl = L.control.layers(
+            {
+                "OpenStreetMap": osmLayer
+            }, {
+                "Stop Line": stopLine,
+                "Shape Line": shapeLine
+            }
+        )
+
+        const map = L.map("map", {
+            layers: [osmLayer, stopData.__shape__ ? shapeLine : stopLine],
+        })
+        map.on("click", function (e) {
+            showGlobal();
+        });
+        layerControl.addTo(map);
+        setTimeout(() => map.fitBounds(stopLine.getBounds()), 0);
+
+        stopData.__stops__.map(stop => {
+            L.marker([parseFloat(stop.stop_lat), parseFloat(stop.stop_lon)])
+            .bindTooltip(stop.stop_name)
+            .addTo(map)
+            .on("click", function (e) {
+                editor.setValue(JSON.stringify(stop, null, 4), -1);
+            });
+        });
+
+        function resizePanes() {
+            map.invalidateSize();
+            editor.resize();
+        }
+        const gutter = document.getElementsByClassName("gutter")[0];
+        var _mouseDown = false;
+        gutter.addEventListener("mousedown", function () {
+            _mouseDown = true;
+        });
+        document.addEventListener("mouseup", function () {
+            _mouseDown = false;
+            resizePanes();
+        });
+        gutter.addEventListener("mousemove", function () {
+            if (_mouseDown) {
+                resizePanes();
+            }
+        });
+    </script>
 </body>
-<script>
-    var stopData = '%stopData%'; // single quotes to avoid escaping
-    if (stopData === "%stop" + "Data%") {
-        alert("Do not open this page directly. Please use the Node.js CLI tool.")
-        throw new Error("Do not open this page directly. Please use the Node.js CLI tool.");
-    } else {
-        stopData = JSON.parse(atob(stopData));
-    }
-    document.getElementById("test").innerHTML = JSON.stringify(stopData, null, 4);
-</script>
 </html>

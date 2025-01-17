@@ -21,6 +21,7 @@
         "tpovev": "./index.js"
     },
     "dependencies": {
+        "ajv": "^8.17.1",
         "open": "^8.4.2"
     }
 }
