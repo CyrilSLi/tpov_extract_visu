@@ -93,7 +93,9 @@
         function showGlobal() {
             editor.setValue(textData.join("\n"), -1);
             foldStartsWith('"__stops__": [');
-            foldStartsWith('"__shape__": [');
+            if (stopData.__shape__) {
+                foldStartsWith('"__shape__": [');
+            }
         }
         showGlobal();
 
