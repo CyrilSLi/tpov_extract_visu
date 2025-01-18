@@ -1,6 +1,6 @@
 {
     "name": "tpov_extract_visu",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "description": "A tool to visualize json files created by tpov_extract on a map",
     "homepage": "https://github.com/CyrilSLi/tpov_extract_visu#readme",
     "bugs": {
