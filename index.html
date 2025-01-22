@@ -12,6 +12,9 @@
     <script src="https://cdn.jsdelivr.net/npm/ace-builds@1.37.5/src/ace.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/split.js@1/dist/split.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/leaflet-easybutton@2/src/easy-button.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/proj4@2/dist/proj4.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/proj4leaflet@1/src/proj4leaflet.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gcoord@1/dist/gcoord.global.min.js"></script>
     <style>
         html, body, div {
             margin: 0px;
@@ -99,25 +102,14 @@
         }
         showGlobal();
 
-        const stopLine = L.polyline(stopData.__stops__.map(stop => [parseFloat(stop.stop_lat), parseFloat(stop.stop_lon)]), {
-            color: "blue",
-            weight: 7,
-            opacity: 0.8,
-            smoothFactor: 0,
-            bubblingMouseEvents: false,
-        });
+        
+        var stopLine = L.polyline([]);
         function showStops(e) {
             editor.setValue(JSON.stringify(stopData.__stops__, null, 4), -1);
         }
         stopLine.on("click", showStops);
 
-        const shapeLine = L.polyline((stopData.__shape__ || []).map(shape => [parseFloat(shape[1]), parseFloat(shape[0])]), { // shape is [lon, lat]
-            color: "red",
-            weight: 7,
-            opacity: 0.8,
-            smoothFactor: 0,
-            bubblingMouseEvents: false,
-        });
+        var shapeLine = L.polyline([]);
         function showShape(e) {
             editor.setValue(JSON.stringify(stopData.__shape__, null, 4), -1);
         }
@@ -127,52 +119,99 @@
             attribution: "&copy; <a href = 'https://www.openstreetmap.org/copyright'>OpenStreetMap</a> contributors",
             maxZoom: 19,
         });
-        // tianditu seems to only work with local html files (CORS issue)
-        const tdtLayer = L.layerGroup([
-            L.tileLayer("https://t{s}.tianditu.gov.cn/vec_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=vec&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=%tiandituTk%", {
-                subdomains: "01234567",
-                maxZoom: 18
-            }),
-            L.tileLayer ("https://t{s}.tianditu.gov.cn/cva_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=cva&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=%tiandituTk%", {
-                attribution: "转自天地图 <a href = 'https://www.tianditu.gov.cn'>https://www.tianditu.gov.cn</a>",
-                subdomains: "01234567",
-                maxZoom: 18
-            })
-        ])
+
+        const EPSG3395 = "+proj=longlat +lon_0=0 +k=1 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs +type=crs";
+        const EPSG4326 = "+proj=longlat +datum=WGS84 +no_defs +type=crs";
+
+        const baiduCRS = new L.Proj.CRS(
+            "EPSG:3395",
+            "+proj=merc +lon_0=0 +k=1 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs", {
+                resolutions: [262144, 131072, 65536, 32768, 16384, 8192, 4096, 2048, 1024, 512, 256, 128, 64, 32, 16, 8, 4, 2, 1],
+                origin: [0, 0],
+                bounds: L.bounds([20037508.342789244, 0], [0, 20037508.342789244])
+            }
+        );
+        const baiduLayer =  L.tileLayer(
+            "https://maponline{s}.bdimg.com/tile/?qt=vtile&x={x}&y={y}&z={z}&styles=pl", {
+                subdomains: ["0", "1", "2", "3"],
+                maxZoom: 19,
+                tms: true
+            }
+        );
 
         const layerControl = L.control.layers(
             {
-                "OpenStreetMap": osmLayer
+                "OpenStreetMap": osmLayer,
+                "Baidu": baiduLayer,
             }, {
                 "Stop Line": stopLine,
                 "Shape Line": shapeLine
             }
         )
 
-        const map = L.map("map", {
-            layers: [osmLayer, stopData.__shape__ ? shapeLine : stopLine],
-        })
-        layerControl.addTo(map);
-        setTimeout(() => map.fitBounds(stopLine.getBounds()), 0);
+        var map;
+        function parseCoord(layer, coord) {
+            if (layer === baiduLayer) {
+                return gcoord.transform([parseFloat(coord[1]), parseFloat(coord[0])], gcoord.WGS84, gcoord.BD09);
+            } else {
+                return [parseFloat(coord[1]), parseFloat(coord[0])];
+            }
+        }
+        function createMap(layer) {
+            console.log(map);
+            if (map) {
+                map.remove();
+            }
 
-        L.easyButton('<i class="bi bi-globe"></i>', function (btn, map) {
-            showGlobal();
-        }, "Show global data").addTo(map);
-        L.easyButton('<i class="bi bi bi-geo-alt-fill"></i>', function (btn, map) {
-            showStops();
-        }, "Show stop list").addTo(map);
-        L.easyButton('<i class="bi bi-bezier2"></i>', function (btn, map) {
-            showShape();
-        }, "Show shape list").addTo(map);
-
-        stopData.__stops__.map(stop => {
-            L.marker([parseFloat(stop.stop_lat), parseFloat(stop.stop_lon)])
-            .bindTooltip(stop.stop_name)
-            .addTo(map)
-            .on("click", function (e) {
-                editor.setValue(JSON.stringify(stop, null, 4), -1);
+            stopLine = L.polyline(stopData.__stops__.map(stop => parseCoord(layer, [stop.stop_lon, stop.stop_lat])), {
+                color: "blue",
+                weight: 7,
+                opacity: 0.8,
+                smoothFactor: 0,
+                bubblingMouseEvents: false,
             });
-        });
+            shapeLine = L.polyline((stopData.__shape__ || []).map(shape => parseCoord(layer, shape)), {
+                color: "red",
+                weight: 7,
+                opacity: 0.8,
+                smoothFactor: 0,
+                bubblingMouseEvents: false,
+            });
+
+            map = L.map("map", {
+                layers: [layer, stopData.__shape__ ? shapeLine : stopLine],
+                crs: layer === baiduLayer ? baiduCRS : L.CRS.EPSG3857,
+            });
+            layerControl.addTo(map);
+            setTimeout(() => map.fitBounds(stopLine.getBounds()), 0);
+            setTimeout(() => map.on("baselayerchange", function (e) {
+                createMap(e.layer);
+            }), 0);
+
+            L.easyButton('<i class="bi bi-globe"></i>', function (btn, map) {
+                showGlobal();
+            }, "Show global data").addTo(map);
+            L.easyButton('<i class="bi bi bi-geo-alt-fill"></i>', function (btn, map) {
+                showStops();
+            }, "Show stop list").addTo(map);
+            L.easyButton('<i class="bi bi-bezier2"></i>', function (btn, map) {
+                showShape();
+            }, "Show shape list").addTo(map);
+
+            stopData.__stops__.map(stop => {
+                L.marker(parseCoord(layer, [stop.stop_lon, stop.stop_lat]))
+                .bindTooltip(stop.stop_name)
+                .addTo(map)
+                .on("click", function (e) {
+                    editor.setValue(JSON.stringify(stop, null, 4), -1);
+                });
+            });
+        }
+        createMap(baiduLayer);
+
+        
+
+        
 
         function resizePanes() {
             map.invalidateSize();
